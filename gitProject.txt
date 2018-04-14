@@ -1,0 +1,117 @@
+// OpenCVApplication.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include "common.h"
+
+#define PATCH_SIZE 15
+
+
+int getMinPatch(int x, int y, Mat src) {
+	int startI = max(x - PATCH_SIZE/2, 0);
+	int endI = min(x + PATCH_SIZE / 2, src.rows -1);
+	int startJ = max(y - PATCH_SIZE / 2, 0);
+	int endJ = min(y + PATCH_SIZE / 2, src.cols-1);
+
+	int minR = src.at<Vec3b>(x, y)[2];
+	int minG = src.at<Vec3b>(x, y)[1];
+	int minB = src.at<Vec3b>(x, y)[0];
+	
+	Vec3b pixel;
+	for (int i = startI; i <= endI; i++) {
+		for (int j = startJ; j <= endJ; j++) {
+			pixel = src.at<Vec3b>(i, j);
+			if (pixel[2] < minR) minR = pixel[2];
+			if (pixel[1] < minG) minG = pixel[1];
+			if (pixel[0] < minB) minB = pixel[0];
+		}
+	}
+	return min(min(minR, minG), minB);
+}
+
+int getMaxPatch(int x, int y, Mat src) {
+	int startI = max(x - PATCH_SIZE / 2, 0);
+	int endI = min(x + PATCH_SIZE / 2, src.rows - 1);
+	int startJ = max(y - PATCH_SIZE / 2, 0);
+	int endJ = min(y + PATCH_SIZE / 2, src.cols - 1);
+
+	int maxR = src.at<Vec3b>(x, y)[2];
+	int maxG = src.at<Vec3b>(x, y)[1];
+	int maxB = src.at<Vec3b>(x, y)[0];
+
+	Vec3b pixel;
+	for (int i = startI; i <= endI; i++) {
+		for (int j = startJ; j <= endJ; j++) {
+			pixel = src.at<Vec3b>(i, j);
+			if (pixel[2] > maxR) maxR = pixel[2];
+			if (pixel[1] > maxG) maxG = pixel[1];
+			if (pixel[0] > maxB) maxB = pixel[0];
+		}
+	}
+	return max(max(maxR, maxG), maxB);
+}
+
+void darkChannelPrior() {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname)) {
+		Mat src;
+		Mat dest;
+		src = imread(fname, CV_LOAD_IMAGE_COLOR);
+		dest = Mat(src.rows, src.cols, CV_8UC1);
+		printf("Size of source is (%d x %d)", src.rows, src.cols);
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				dest.at<uchar>(i,j)= getMinPatch(i, j, src);
+			}
+		}
+		imshow("src", src);
+		imshow("dest", dest);
+		waitKey(0);
+	}
+}
+
+void brightChannelPrior() {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname)) {
+		Mat src;
+		Mat dest;
+		src = imread(fname, CV_LOAD_IMAGE_COLOR);
+		dest = Mat(src.rows, src.cols, CV_8UC1);
+		printf("Size of source is (%d x %d)", src.rows, src.cols);
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				dest.at<uchar>(i, j) = getMaxPatch(i, j, src);
+			}
+		}
+		imshow("src", src);
+		imshow("dest", dest);
+		waitKey(0);
+	}
+}
+
+int main(){
+
+	int op;
+	do
+	{
+		system("cls");
+		destroyAllWindows();
+		printf("Menu:\n");
+		printf(" 1 - Dark Channel Prior image\n");
+		printf(" 2 - Bright Channel Prior image\n");
+		printf("Option: ");
+		scanf("%d",&op);
+		switch (op)
+		{
+			case 1:
+				darkChannelPrior();
+				break;
+			case 2:
+				brightChannelPrior();
+				break;
+		}
+	}
+	while (op!=0);
+	return 0;
+
+}
