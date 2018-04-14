@@ -3,11 +3,11 @@
 
 #include "stdafx.h"
 #include "common.h"
+#include <iostream>
 
 #define PATCH_SIZE 15
 
-
-int getMinPatch(int x, int y, Mat src) {
+int getMinFromPatch(int x, int y, Mat src) {
 	int startI = max(x - PATCH_SIZE/2, 0);
 	int endI = min(x + PATCH_SIZE / 2, src.rows -1);
 	int startJ = max(y - PATCH_SIZE / 2, 0);
@@ -29,7 +29,7 @@ int getMinPatch(int x, int y, Mat src) {
 	return min(min(minR, minG), minB);
 }
 
-int getMaxPatch(int x, int y, Mat src) {
+int getMaxFromPatch(int x, int y, Mat src) {
 	int startI = max(x - PATCH_SIZE / 2, 0);
 	int endI = min(x + PATCH_SIZE / 2, src.rows - 1);
 	int startJ = max(y - PATCH_SIZE / 2, 0);
@@ -51,41 +51,39 @@ int getMaxPatch(int x, int y, Mat src) {
 	return max(max(maxR, maxG), maxB);
 }
 
-void darkChannelPrior() {
-	char fname[MAX_PATH];
-	while (openFileDlg(fname)) {
-		Mat src;
+Mat darkChannelPrior(Mat src) {
 		Mat dest;
-		src = imread(fname, CV_LOAD_IMAGE_COLOR);
 		dest = Mat(src.rows, src.cols, CV_8UC1);
 		printf("Size of source is (%d x %d)", src.rows, src.cols);
 		for (int i = 0; i < src.rows; i++) {
 			for (int j = 0; j < src.cols; j++) {
-				dest.at<uchar>(i,j)= getMinPatch(i, j, src);
+				dest.at<uchar>(i,j)= getMinFromPatch(i, j, src);
 			}
 		}
-		imshow("src", src);
-		imshow("dest", dest);
-		waitKey(0);
-	}
+		return dest;
 }
 
-void brightChannelPrior() {
-	char fname[MAX_PATH];
-	while (openFileDlg(fname)) {
-		Mat src;
+Mat brightChannelPrior(Mat src) {
 		Mat dest;
-		src = imread(fname, CV_LOAD_IMAGE_COLOR);
 		dest = Mat(src.rows, src.cols, CV_8UC1);
 		printf("Size of source is (%d x %d)", src.rows, src.cols);
 		for (int i = 0; i < src.rows; i++) {
 			for (int j = 0; j < src.cols; j++) {
-				dest.at<uchar>(i, j) = getMaxPatch(i, j, src);
+				dest.at<uchar>(i, j) = getMaxFromPatch(i, j, src);
 			}
 		}
+		return dest;
+}
+
+void imageTransformerInterface(Mat(*f)(Mat)) {
+	char fname[MAX_PATH];
+	Mat src, dest;
+	while (openFileDlg(fname))
+	{
+		src = imread(fname, CV_LOAD_IMAGE_COLOR);
+		dest = f(src);
 		imshow("src", src);
 		imshow("dest", dest);
-		waitKey(0);
 	}
 }
 
@@ -97,17 +95,17 @@ int main(){
 		system("cls");
 		destroyAllWindows();
 		printf("Menu:\n");
-		printf(" 1 - Dark Channel Prior image\n");
-		printf(" 2 - Bright Channel Prior image\n");
+		printf(" 1 - Bright Channel Prior image\n");
+		printf(" 2 - Dark Channel Prior image\n");
 		printf("Option: ");
 		scanf("%d",&op);
 		switch (op)
 		{
 			case 1:
-				darkChannelPrior();
+				imageTransformerInterface(brightChannelPrior);
 				break;
 			case 2:
-				brightChannelPrior();
+				imageTransformerInterface(darkChannelPrior);
 				break;
 		}
 	}
