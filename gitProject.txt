@@ -176,10 +176,50 @@ Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
 		atmosphericLight.blue = trunc(blueSum);
 		atmosphericLight.red = trunc(redSum);
 		atmosphericLight.green = trunc(greenSum);
-		return atmosphericLight;
-
-		
+		return atmosphericLight;	
 }
+
+Mat computeTBright(Mat brightChannel, Tatm atmosphericLight, String color) {
+	int i, j;
+	Mat tBright = Mat::zeros(brightChannel.rows,brightChannel.cols,CV_32FC1);
+	int atmosphericLightForColor = 0;
+	if (color.compare("blue")) {
+		atmosphericLightForColor = atmosphericLight.blue;
+	}
+	else if (color.compare("red")) {
+		atmosphericLightForColor = atmosphericLight.red;
+	}
+	else if (color.compare("green")) {
+		atmosphericLightForColor = atmosphericLight.green;
+	}
+	for (i = 0; i < brightChannel.rows; i++) {
+		for (j = 0; j < brightChannel.cols; j++) {
+			tBright.at<float>(i, j) = (float)(brightChannel.at<uchar>(i, j) - atmosphericLightForColor) / (255 - atmosphericLightForColor);
+			//std::cout << "Tx:" << tBright.at<float>(i, j) << std::endl;
+		}
+	}
+	return tBright;
+}
+/*
+Mat normalize(Mat toNormalize) {
+
+	Mat imagOut = Mat::zeros(toNormalize.rows, toNormalize.cols, CV_8UC1);
+	for (int i = 0; i < toNormalize.rows; i++) {
+		for (int j = 0; j < toNormalize.cols; j++) {
+			if (toNormalize.at<float>(i, j) >255)
+				imagOut.at<uchar>(i, j) = 255;
+			else if (toNormalize.at<float>(i, j) < 0)
+			{
+				imagOut.at<uchar>(i, j) = abs(imagOut.at<uchar>(i, j));
+				if (imagOut.at<uchar>(i, j)>255)
+					imagOut.at<uchar>(i, j) = 255;
+			}
+			else
+				imagOut.at<uchar>(i, j) = toNormalize.at<float>(i, j);
+		}
+	}
+	return imagOut;
+}*/
 
 
 
@@ -207,12 +247,28 @@ int main() {
 	} while (op != 0);
 	*/
 	char fname[MAX_PATH];
-	Mat src, dest;
+	Mat originalImage, brightChannel, tBrightBlue, tBrightGreen, tBrightRed, showableTBright;
+	showableTBright = Mat::zeros(originalImage.rows, originalImage.cols, CV_8UC3);
+	Tatm atmospheric;
 	while (openFileDlg(fname))
 	{
-		src = imread(fname, CV_LOAD_IMAGE_COLOR);
-		dest = brightChannelPrior(src);
-		getAtmosphericLight(dest,src);
+		originalImage = imread(fname, CV_LOAD_IMAGE_COLOR);
+		brightChannel = brightChannelPrior(originalImage);
+		atmospheric = getAtmosphericLight(brightChannel,originalImage);
+		tBrightBlue = computeTBright(brightChannel, atmospheric, "blue");
+		tBrightRed = computeTBright(brightChannel, atmospheric, "red");
+		tBrightGreen = computeTBright(brightChannel, atmospheric, "green");
+		/*for (int i = 0; i < originalImage.rows; i++) {
+			for (int j = 0; j < originalImage.cols; j++) {
+				showableTBright.at<Vec3b>(i, j)[0] = tBrightBlue.at<float>(i, j);
+				showableTBright.at<Vec3b>(i, j)[1] = tBrightGreen.at<float>(i, j);
+				showableTBright.at<Vec3b>(i, j)[2] = tBrightRed.at<float>(i, j);
+			}
+		}*/
+		//showableTBright = normalize(tBright);
+		imshow("tBrightR", tBrightRed);
+		imshow("tBrightB", tBrightBlue);
+		imshow("tBrightG", tBrightGreen);
 	}
 	
 	return 0;
