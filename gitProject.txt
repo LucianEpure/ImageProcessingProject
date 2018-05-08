@@ -1,11 +1,9 @@
-// OpenCVApplication.cpp : Defines the entry point for the console application.
-//
-
 #include "stdafx.h"
 #include "common.h"
 #include <iostream>
 
 #define PATCH_SIZE 15
+#define ALPHA 0.4
 
 typedef struct point {
 	int x, y, val;
@@ -83,6 +81,16 @@ Mat brightChannelPrior(Mat src) {
 	return dest;
 }
 
+Mat differenceChannel(Mat bright, Mat dark) {
+	Mat dest = Mat(bright.rows, bright.cols, CV_8UC1);
+	for (int i = 0; i < bright.rows; i++) {
+		for (int j = 0; j < bright.cols; j++) {
+			dest.at<uchar>(i, j) = bright.at<uchar>(i, j) - dark.at<uchar>(i, j);
+		}
+	}
+	return dest;
+}
+
 Mat imageTransformerInterface(Mat(*f)(Mat)) {
 	char fname[MAX_PATH];
 	Mat src, dest;
@@ -90,147 +98,124 @@ Mat imageTransformerInterface(Mat(*f)(Mat)) {
 	{
 		src = imread(fname, CV_LOAD_IMAGE_COLOR);
 		dest = f(src);
-	//	imshow("src", src);
-	//	imshow("dest", dest);
+		//	imshow("src", src);
+		//	imshow("dest", dest);
 	}
 	return dest;
 }
 
-void insertCorrect(uchar arr[], int val) {
-	printf("size of array is %d\n", sizeof(arr));
-	for (int i = 0; i < sizeof(arr); i++)
-		arr[i] = 'a';
-	
-	
-	/*int i = sizeof(arr);
-	while ((i > arr[0]) && (val < arr[i - 1]))
-	{
-		arr[i] = arr[i - 1];
-		i = i - 1;
-	}
-	arr[i] = val;*/
-}
-
 Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
-	
-		Mat src = brightChannel;
-		int i, j;
-		int topTen = 0;
-		int totalSource = src.rows * src.cols;
-		topTen = (10 * totalSource) / 100;
-		int topTenClone = topTen;
-		std::multimap<int, Point2i> pixelMap;
-		Tatm atmosphericLight;
-		atmosphericLight.blue = 0;
-		atmosphericLight.green = 0;
-		atmosphericLight.red = 0;
-		
-		bool fullArray = false;
-		int pixArray[256];
-		std::vector<Point2i> pixVector;
-		float topTenSum = 0;
-		
-		for (i = 0; i < 256; i++)
+
+	Mat src = brightChannel;
+	int i, j;
+	int topTen = 0;
+	int totalSource = src.rows * src.cols;
+	topTen = (10 * totalSource) / 100;
+	int topTenClone = topTen;
+	std::multimap<int, Point2i> pixelMap;
+	Tatm atmosphericLight;
+	atmosphericLight.blue = 0;
+	atmosphericLight.green = 0;
+	atmosphericLight.red = 0;
+
+	bool fullArray = false;
+	int pixArray[256];
+	std::vector<Point2i> pixVector;
+	float topTenSum = 0;
+
+	for (i = 0; i < 256; i++)
+	{
+		pixArray[i] = 0;
+	}
+
+	for (i = 0; i < src.rows; i++) {
+		for (j = 0; j < src.cols; j++) {
+			pixArray[src.at<uchar>(i, j)]++;
+			pixelMap.insert(std::pair<int, Point2i>(src.at<uchar>(i, j), Point2i(i, j)));
+		}
+	}
+	for (i = 0; i < sizeof(pixArray) / sizeof(int); i++)
+		std::cout << i << " " << pixArray[i] << "\n";
+
+	std::cout << "topTen float:" << (float)topTen << "\n";
+	i = sizeof(pixArray) / sizeof(int);
+	while (topTenClone != 0) {
+
+		std::pair<std::multimap<int, Point2i>::iterator, std::multimap<int, Point2i>::iterator> ret;
+		ret = pixelMap.equal_range(i);
+
+		for (std::multimap<int, Point2i>::iterator it = ret.first; it != ret.second; ++it)
 		{
-			pixArray[i] = 0;
+			pixVector.push_back(it->second);
 		}
-		
-		for (i = 0; i < src.rows; i++) {
-			for (j = 0; j < src.cols; j++) {
-				pixArray[src.at<uchar>(i, j)]++;
-				pixelMap.insert(std::pair<int, Point2i>(src.at<uchar>(i, j), Point2i(i, j)));
-			}
+		while ((pixArray[i] > 0) && (topTenClone != 0)) {
+			topTenClone--;
+			pixArray[i]--;
 		}
-		for (i = 0; i < sizeof(pixArray) / sizeof(int); i++)
-			std::cout << i << " " << pixArray[i] << "\n";
-		
-		std::cout <<"topTen float:"<< (float)topTen << "\n";
-		i = sizeof(pixArray) / sizeof(int);
-		while (topTenClone != 0) {
-			
-			std::pair<std::multimap<int, Point2i>::iterator, std::multimap<int, Point2i>::iterator> ret;
-			ret = pixelMap.equal_range(i);
-			
-			for (std::multimap<int, Point2i>::iterator it = ret.first; it != ret.second; ++it)
-			{
-				pixVector.push_back(it->second);
-			}
-			while ((pixArray[i] > 0)&&(topTenClone!=0)) {	
-				topTenClone--;
-				pixArray[i]--;
-			}
-			i--;
-		}
-		float blueSum = 0.0f;
-		float greenSum = 0.0f;
-		float redSum = 0.0f;
-		for (i = 0; i < topTen; i++) {
-			//goodVector.push_back(pixVector.at(i));
-			blueSum = blueSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[0] / topTen;
-			greenSum = greenSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[1] / topTen;
-			redSum = redSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[2] / topTen;
-			//std::cout<<"TOPTEN:"<<topTen<<" I="<<i<< ": [ " << goodVector.at(i).x << ", "<<goodVector.at(i).y<<"]"<<std::endl;
-		}
-		std::cout << blueSum << " " << redSum << " " << greenSum << std::endl;
-		atmosphericLight.blue = trunc(blueSum);
-		atmosphericLight.red = trunc(redSum);
-		atmosphericLight.green = trunc(greenSum);
-		std::cout << "R:" << redSum << " G:" << greenSum << " B:" << blueSum << std::endl;
-		return atmosphericLight;	
+		i--;
+	}
+	float blueSum = 0.0f;
+	float greenSum = 0.0f;
+	float redSum = 0.0f;
+	for (i = 0; i < topTen; i++) {
+		//goodVector.push_back(pixVector.at(i));
+		blueSum = blueSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[0] / topTen;
+		greenSum = greenSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[1] / topTen;
+		redSum = redSum + (float)originalImage.at<Vec3b>(pixVector.at(i).x, pixVector.at(i).y)[2] / topTen;
+		//std::cout<<"TOPTEN:"<<topTen<<" I="<<i<< ": [ " << goodVector.at(i).x << ", "<<goodVector.at(i).y<<"]"<<std::endl;
+	}
+	std::cout << blueSum << " " << redSum << " " << greenSum << std::endl;
+	atmosphericLight.blue = trunc(blueSum);
+	atmosphericLight.red = trunc(redSum);
+	atmosphericLight.green = trunc(greenSum);
+	std::cout << "R:" << redSum << " G:" << greenSum << " B:" << blueSum << std::endl;
+	return atmosphericLight;
 }
 
-Mat computeTBright(Mat brightChannel, Tatm atmosphericLight, int color) {
+Mat computeTrans(Mat channel, Tatm atmosphericLight, int color, int value) {
 	int i, j;
-	Mat tBright = Mat::zeros(brightChannel.rows,brightChannel.cols,CV_32FC1);
+	Mat trans = Mat::zeros(channel.rows, channel.cols, CV_32FC1);
 	int atmosphericLightForColor = 0;
-	if (color==0) {
+	if (color == 0) {
 		atmosphericLightForColor = atmosphericLight.blue;
-		std::cout << "BBBBBBBBBBBBB";
 	}
 	else if (color == 1) {
 		atmosphericLightForColor = atmosphericLight.green;
-		std::cout << "GGGGGGGGGGG";
 	}
-	else if (color==2) {
+	else if (color == 2) {
 		atmosphericLightForColor = atmosphericLight.red;
-		std::cout << "RRRRRRRRRRR";
 	}
-	
-	for (i = 0; i < brightChannel.rows; i++) {
-		for (j = 0; j < brightChannel.cols; j++) {
-			tBright.at<float>(i, j) = (float)(brightChannel.at<uchar>(i, j) - atmosphericLightForColor) / (255 - atmosphericLightForColor);
-			//std::cout << "Tx:" << tBright.at<float>(i, j) << std::endl;
+
+	for (i = 0; i < channel.rows; i++) {
+		for (j = 0; j < channel.cols; j++) {
+			trans.at<float>(i, j) = (float)(channel.at<uchar>(i, j) - atmosphericLightForColor) / (value - atmosphericLightForColor);
 		}
 	}
-	return tBright;
+	return trans;
 }
 
 Mat normalize(Mat src) {
-		Mat dest = Mat::zeros(src.rows, src.cols, CV_8UC1);
-		int minOut = 0, maxOut = 255;
-		int maxIn = src.at<float>(0, 0);
-		int minIn = src.at<float>(0, 0);
+	Mat dest = Mat::zeros(src.rows, src.cols, CV_8UC1);
+	int minOut = 0, maxOut = 255;
+	int maxIn = src.at<float>(0, 0);
+	int minIn = src.at<float>(0, 0);
 
-		for (int i = 0; i < src.rows; i++) {
-			for (int j = 0; j < src.cols; j++) {
-				if (src.at<float>(i, j) < minIn) minIn = src.at<float>(i, j);
-				if (src.at<float>(i, j) > maxIn) maxIn = src.at<float>(i, j);
-			}
+	for (int i = 0; i < src.rows; i++) {
+		for (int j = 0; j < src.cols; j++) {
+			if (src.at<float>(i, j) < minIn) minIn = src.at<float>(i, j);
+			if (src.at<float>(i, j) > maxIn) maxIn = src.at<float>(i, j);
 		}
+	}
 
-		for (int i = 0; i < src.rows; i++) {
-			for (int j = 0; j < src.cols; j++) {
-				dest.at<uchar>(i, j) = minOut + ((float)(src.at<float>(i, j) - minIn) / (maxIn - minIn)) * (maxOut - minOut);
-			}
+	for (int i = 0; i < src.rows; i++) {
+		for (int j = 0; j < src.cols; j++) {
+			dest.at<uchar>(i, j) = minOut + ((float)(src.at<float>(i, j) - minIn) / (maxIn - minIn)) * (maxOut - minOut);
 		}
-		return dest;
+	}
+	return dest;
 }
 
 boolean equalMat(Mat mat1, Mat mat2) {
-	/*Mat_<uchar > mat3(mat1.rows, mat2.cols);
-	mat3.setTo(255);
-	mat3(1, 2) = 0;*/
-
 	if (mat1.rows != mat2.rows) return false;
 	if (mat1.cols != mat2.cols) return false;
 	for (int i = 0; i < mat1.rows; i++) {
@@ -241,74 +226,69 @@ boolean equalMat(Mat mat1, Mat mat2) {
 	return true;
 }
 
-Mat brightTransmissionView(Mat brightChannel, Tatm atmosphericLight) {
-	Mat blueComponent = normalize(computeTBright(brightChannel, atmosphericLight, 0));
+void transmissionView(Mat blue, Mat green, Mat red, std::string name) {
+	Mat blueNorm = normalize(blue);
+	Mat greenNorm = normalize(green);
+	Mat redNorm = normalize(red);
 
-	Mat greenComponent = normalize(computeTBright(brightChannel, atmosphericLight, 1));
-
-	Mat redComponent = normalize(computeTBright(brightChannel, atmosphericLight, 2));
-
-	
-	
-	imshow("on red", redComponent);
-	imshow("on blue", blueComponent);
-	imshow("on green", greenComponent);
-
-	if (equalMat(redComponent, blueComponent)) printf("red=blue");
-	if (equalMat(greenComponent, blueComponent)) printf("green=blue");
-	if (equalMat(greenComponent, redComponent)) printf("green=red");
-
-	Mat transDest = Mat(brightChannel.rows, brightChannel.cols, CV_8UC3);
-	for (int i = 0; i < brightChannel.rows; i++) {
-		for (int j = 0; j < brightChannel.cols; j++) {
-			transDest.at<Vec3b>(i, j)[0] = blueComponent.at<uchar>(i, j);
-			transDest.at<Vec3b>(i, j)[1] = greenComponent.at<uchar>(i, j);
-			transDest.at<Vec3b>(i, j)[2] = redComponent.at<uchar>(i, j);
+	Mat transDest = Mat(blue.rows, blue.cols, CV_8UC3);
+	for (int i = 0; i < blue.rows; i++) {
+		for (int j = 0; j < blue.cols; j++) {
+			transDest.at<Vec3b>(i, j)[0] = blueNorm.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[1] = greenNorm.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[2] = redNorm.at<uchar>(i, j);
 		}
 	}
-	return transDest;
+	//imshow("on red", redNorm);
+	//imshow("on blue", blueNorm);
+	//imshow("on green", greenNorm);
+	imshow(name, transDest);
 }
 
-
+Mat correctTransmission(Mat diffChannel, Mat brightTrans, Mat darkTrans) {
+	Mat correctedTrans = Mat::zeros(brightTrans.rows, brightTrans.cols, CV_32FC1);
+	for (int i = 0; i < brightTrans.rows; i++) {
+		for (int j = 0; j < brightTrans.cols; j++) {
+			if (diffChannel.at<uchar>(i, j) >= ALPHA) correctedTrans.at<float>(i,j) = brightTrans.at<float>(i, j);
+			else {
+				correctedTrans.at<float>(i, j) = brightTrans.at<float>(i, j) * darkTrans.at<float>(i, j);
+				printf("changed pixel\n");
+			}
+		}
+	}
+	return correctedTrans;
+}
 
 int main() {
-
-	int op;
-	/*do
-	{
-		system("cls");
-		destroyAllWindows();
-		printf("Menu:\n");
-		printf(" 1 - Bright Channel Prior image\n");
-		printf(" 2 - Dark Channel Prior image\n");
-		printf("Option: ");
-		scanf("%d", &op);
-		switch (op)
-		{
-		case 1:
-			getAtmosphericLight(imageTransformerInterface(brightChannelPrior));
-			break;
-		case 2:
-			imageTransformerInterface(darkChannelPrior);
-			break;
-		}
-	} while (op != 0);
-	*/
 	char fname[MAX_PATH];
-	Mat originalImage, brightChannel, tBrightBlue, tBrightGreen, tBrightRed, showableTBright;
-	showableTBright = Mat::zeros(originalImage.rows, originalImage.cols, CV_8UC3);
+	Mat originalImage, brightChannel, darkChannel, diffChannel, blueTransBright, redTransBright, greenTransBright, blueTransDark, redTransDark, greenTransDark;
+	Mat blueTransCorrected, greenTransCorrected, redTransCorrected;
 	Tatm atmospheric;
 	while (openFileDlg(fname))
 	{
 		originalImage = imread(fname, CV_LOAD_IMAGE_COLOR);
 		brightChannel = brightChannelPrior(originalImage);
-		atmospheric = getAtmosphericLight(brightChannel,originalImage);
-		showableTBright = brightTransmissionView(brightChannel, atmospheric);
-
-		// on red
-		imshow("tBrightTrans", showableTBright);
+		darkChannel = darkChannelPrior(originalImage);
+		atmospheric = getAtmosphericLight(brightChannel, originalImage);
+		
+		blueTransBright = computeTrans(brightChannel, atmospheric, 0, 255);
+		greenTransBright = computeTrans(brightChannel, atmospheric, 1, 255);
+		redTransBright = computeTrans(brightChannel, atmospheric, 2, 255);
+		transmissionView(blueTransBright, greenTransBright, redTransBright, "bright trans");
+		
+		diffChannel = differenceChannel(brightChannel, darkChannel);
+		blueTransDark = computeTrans(darkChannel, atmospheric, 0 , 0);
+		greenTransDark = computeTrans(darkChannel, atmospheric, 1, 0);
+		redTransDark = computeTrans(darkChannel, atmospheric, 2, 0);
+		
+		
+		blueTransCorrected = correctTransmission(diffChannel, blueTransBright, blueTransDark);
+		greenTransCorrected = correctTransmission(diffChannel, greenTransBright, greenTransDark);
+		redTransCorrected = correctTransmission(diffChannel, redTransBright, redTransDark);
+		transmissionView(blueTransCorrected, greenTransCorrected, redTransCorrected, "corrected trans");
+		
 	}
-	
+
 	return 0;
 
 }
