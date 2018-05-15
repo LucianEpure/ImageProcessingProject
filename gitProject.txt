@@ -128,6 +128,7 @@ Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
 		pixArray[i] = 0;
 	}
 
+<<<<<<< HEAD
 	for (i = 0; i < src.rows; i++) {
 		for (j = 0; j < src.cols; j++) {
 			pixArray[src.at<uchar>(i, j)]++;
@@ -147,6 +148,77 @@ Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
 		for (std::multimap<int, Point2i>::iterator it = ret.first; it != ret.second; ++it)
 		{
 			pixVector.push_back(it->second);
+||||||| merged common ancestors
+Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
+	
+		Mat src = brightChannel;
+		int i, j;
+		int topTen = 0;
+		int totalSource = src.rows * src.cols;
+		topTen = (10 * totalSource) / 100;
+		int topTenClone = topTen;
+		std::multimap<int, Point2i> pixelMap;
+		Tatm atmosphericLight;
+		atmosphericLight.blue = 0;
+		atmosphericLight.green = 0;
+		atmosphericLight.red = 0;
+		
+		bool fullArray = false;
+		int pixArray[256];
+		std::vector<Point2i> pixVector;
+		float topTenSum = 0;
+		
+		for (i = 0; i < 256; i++)
+		{
+			pixArray[i] = 0;
+		}
+		
+		for (i = 0; i < src.rows; i++) {
+			for (j = 0; j < src.cols; j++) {
+				pixArray[src.at<uchar>(i, j)]++;
+				pixelMap.insert(std::pair<int, Point2i>(src.at<uchar>(i, j), Point2i(i, j)));
+			}
+		}
+		for (i = 0; i < sizeof(pixArray) / sizeof(int); i++)
+			std::cout << i << " " << pixArray[i] << "\n";
+		
+		std::cout <<"topTen float:"<< (float)topTen << "\n";
+		i = sizeof(pixArray) / sizeof(int);
+		while (topTenClone != 0) {
+			
+			std::pair<std::multimap<int, Point2i>::iterator, std::multimap<int, Point2i>::iterator> ret;
+			ret = pixelMap.equal_range(i);
+			
+			for (std::multimap<int, Point2i>::iterator it = ret.first; it != ret.second; ++it)
+			{
+				pixVector.push_back(it->second);
+			}
+			while ((pixArray[i] > 0)&&(topTenClone!=0)) {	
+				topTenClone--;
+				pixArray[i]--;
+			}
+			i--;
+=======
+	for (i = 0; i < src.rows; i++) {
+		for (j = 0; j < src.cols; j++) {
+			pixArray[src.at<uchar>(i, j)]++;
+			pixelMap.insert(std::pair<int, Point2i>(src.at<uchar>(i, j), Point2i(i, j)));
+		}
+	}
+	for (i = 0; i < sizeof(pixArray) / sizeof(int); i++)
+		std::cout << i << " " << pixArray[i] << "\n";
+
+	std::cout << "topTen float:" << (float)topTen << "\n";
+	i = sizeof(pixArray) / sizeof(int);
+	while (topTenClone != 0) {
+
+		std::pair<std::multimap<int, Point2i>::iterator, std::multimap<int, Point2i>::iterator> ret;
+		ret = pixelMap.equal_range(i);
+
+		for (std::multimap<int, Point2i>::iterator it = ret.first; it != ret.second; ++it)
+		{
+			pixVector.push_back(it->second);
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 		}
 		while ((pixArray[i] > 0) && (topTenClone != 0)) {
 			topTenClone--;
@@ -172,7 +244,13 @@ Tatm getAtmosphericLight(Mat brightChannel, Mat originalImage) {
 	return atmosphericLight;
 }
 
+<<<<<<< HEAD
 Mat computeTrans(Mat channel, Tatm atmosphericLight, int color) {
+||||||| merged common ancestors
+Mat computeTBright(Mat brightChannel, Tatm atmosphericLight, int color) {
+=======
+Mat computeTrans(Mat channel, Tatm atmosphericLight, int color, int value) {
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 	int i, j;
 	Mat trans = Mat::zeros(channel.rows, channel.cols, CV_32FC1);
 	int atmosphericLightForColor = 0;
@@ -185,10 +263,23 @@ Mat computeTrans(Mat channel, Tatm atmosphericLight, int color) {
 	else if (color == 2) {
 		atmosphericLightForColor = atmosphericLight.red;
 	}
+<<<<<<< HEAD
 
 	for (i = 0; i < channel.rows; i++) {
 		for (j = 0; j < channel.cols; j++) {
 			trans.at<float>(i, j) = (float)(channel.at<uchar>(i, j) - atmosphericLightForColor) / (255 - atmosphericLightForColor);
+||||||| merged common ancestors
+	
+	for (i = 0; i < brightChannel.rows; i++) {
+		for (j = 0; j < brightChannel.cols; j++) {
+			tBright.at<float>(i, j) = (float)(brightChannel.at<uchar>(i, j) - atmosphericLightForColor) / (255 - atmosphericLightForColor);
+			//std::cout << "Tx:" << tBright.at<float>(i, j) << std::endl;
+=======
+
+	for (i = 0; i < channel.rows; i++) {
+		for (j = 0; j < channel.cols; j++) {
+			trans.at<float>(i, j) = (float)(channel.at<uchar>(i, j) - atmosphericLightForColor) / (value - atmosphericLightForColor);
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 		}
 	}
 	return trans;
@@ -226,6 +317,7 @@ boolean equalMat(Mat mat1, Mat mat2) {
 	return true;
 }
 
+<<<<<<< HEAD
 void transmissionView(Mat blue, Mat green, Mat red, std::string name) {
 	Mat blueNorm = normalize(blue);
 	Mat greenNorm = normalize(green);
@@ -272,17 +364,84 @@ Mat gaussNuc() {
 		for (int j = 0; j < nucleus.cols; j++) {
 			nucleus.at<float>(i, j) = ((float)1 / ((float)2 * pow(sigma, 2.0) *PI)) * exp(((-1)*((i - x0)*(i - x0) + (j - y0)*(j - y0))) / (2 * (sigma*sigma)));
 			
+||||||| merged common ancestors
+Mat brightTransmissionView(Mat brightChannel, Tatm atmosphericLight) {
+	Mat blueComponent = normalize(computeTBright(brightChannel, atmosphericLight, 0));
+
+	Mat greenComponent = normalize(computeTBright(brightChannel, atmosphericLight, 1));
+
+	Mat redComponent = normalize(computeTBright(brightChannel, atmosphericLight, 2));
+
+	
+	
+	imshow("on red", redComponent);
+	imshow("on blue", blueComponent);
+	imshow("on green", greenComponent);
+
+	if (equalMat(redComponent, blueComponent)) printf("red=blue");
+	if (equalMat(greenComponent, blueComponent)) printf("green=blue");
+	if (equalMat(greenComponent, redComponent)) printf("green=red");
+
+	Mat transDest = Mat(brightChannel.rows, brightChannel.cols, CV_8UC3);
+	for (int i = 0; i < brightChannel.rows; i++) {
+		for (int j = 0; j < brightChannel.cols; j++) {
+			transDest.at<Vec3b>(i, j)[0] = blueComponent.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[1] = greenComponent.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[2] = redComponent.at<uchar>(i, j);
+=======
+void transmissionView(Mat blue, Mat green, Mat red, std::string name) {
+	Mat blueNorm = normalize(blue);
+	Mat greenNorm = normalize(green);
+	Mat redNorm = normalize(red);
+
+	Mat transDest = Mat(blue.rows, blue.cols, CV_8UC3);
+	for (int i = 0; i < blue.rows; i++) {
+		for (int j = 0; j < blue.cols; j++) {
+			transDest.at<Vec3b>(i, j)[0] = blueNorm.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[1] = greenNorm.at<uchar>(i, j);
+			transDest.at<Vec3b>(i, j)[2] = redNorm.at<uchar>(i, j);
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 		}
+<<<<<<< HEAD
 	return nucleus;
+||||||| merged common ancestors
+	}
+	return transDest;
+=======
+	}
+	//imshow("on red", redNorm);
+	//imshow("on blue", blueNorm);
+	//imshow("on green", greenNorm);
+	imshow(name, transDest);
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 }
 
+<<<<<<< HEAD
 Mat guidanceWithGauss(Mat src) {
 
 	Mat dst;
 	Mat nucleus = gaussNuc();
 	dst = Mat::zeros(src.rows, src.cols, CV_32FC1);
 	int tempSum = 0;
+||||||| merged common ancestors
 
+=======
+Mat correctTransmission(Mat diffChannel, Mat brightTrans, Mat darkTrans) {
+	Mat correctedTrans = Mat::zeros(brightTrans.rows, brightTrans.cols, CV_32FC1);
+	for (int i = 0; i < brightTrans.rows; i++) {
+		for (int j = 0; j < brightTrans.cols; j++) {
+			if (diffChannel.at<uchar>(i, j) >= ALPHA) correctedTrans.at<float>(i,j) = brightTrans.at<float>(i, j);
+			else {
+				correctedTrans.at<float>(i, j) = brightTrans.at<float>(i, j) * darkTrans.at<float>(i, j);
+				printf("changed pixel\n");
+			}
+		}
+	}
+	return correctedTrans;
+}
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
+
+<<<<<<< HEAD
 	for (int i = 2; i < src.rows - 2; i++) {
 		for (int j = 2; j < src.cols - 2; j++) {
 			tempSum = 0;
@@ -318,16 +477,52 @@ std::vector<Mat> splitImageOnChannels(Mat src) {
 }
 
 int main() {
+||||||| merged common ancestors
+int main() {
+
+	int op;
+	/*do
+	{
+		system("cls");
+		destroyAllWindows();
+		printf("Menu:\n");
+		printf(" 1 - Bright Channel Prior image\n");
+		printf(" 2 - Dark Channel Prior image\n");
+		printf("Option: ");
+		scanf("%d", &op);
+		switch (op)
+		{
+		case 1:
+			getAtmosphericLight(imageTransformerInterface(brightChannelPrior));
+			break;
+		case 2:
+			imageTransformerInterface(darkChannelPrior);
+			break;
+		}
+	} while (op != 0);
+	*/
+=======
+int main() {
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 	char fname[MAX_PATH];
+<<<<<<< HEAD
 	Mat originalImage, brightChannel, darkChannel, diffChannel, blueTransBright, redTransBright, greenTransBright, blueTransDark, redTransDark, greenTransDark;
 	Mat blueTransCorrected, greenTransCorrected, redTransCorrected;
 	Mat blueGuidanceImage, greenGuidanceImage, redGuidanceImage;
+||||||| merged common ancestors
+	Mat originalImage, brightChannel, tBrightBlue, tBrightGreen, tBrightRed, showableTBright;
+	showableTBright = Mat::zeros(originalImage.rows, originalImage.cols, CV_8UC3);
+=======
+	Mat originalImage, brightChannel, darkChannel, diffChannel, blueTransBright, redTransBright, greenTransBright, blueTransDark, redTransDark, greenTransDark;
+	Mat blueTransCorrected, greenTransCorrected, redTransCorrected;
+>>>>>>> 7b46c78c09418e55714886570e503bdef6e08d3b
 	Tatm atmospheric;
 	std::vector<Mat> matrices;
 	while (openFileDlg(fname))
 	{
 		originalImage = imread(fname, CV_LOAD_IMAGE_COLOR);
 		brightChannel = brightChannelPrior(originalImage);
+<<<<<<< HEAD
 		darkChannel = darkChannelPrior(originalImage);
 		atmospheric = getAtmosphericLight(brightChannel, originalImage);
 
@@ -359,6 +554,13 @@ int main() {
 		imshow("blue", normalize(blueGuidanceImage));
 		imshow("green", normalize(greenGuidanceImage));
 		imshow("red", normalize(redGuidanceImage));
+||||||| merged common ancestors
+		atmospheric = getAtmosphericLight(brightChannel,originalImage);
+		showableTBright = brightTransmissionView(brightChannel, atmospheric);
+
+		// on red
+		imshow("tBrightTrans", showableTBright);
+
 	}
 
 	return 0;
